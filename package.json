@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.2.0",
+    "express": "^5.2.1",
     "mongoose": "^9.1.4"
   }
 }
