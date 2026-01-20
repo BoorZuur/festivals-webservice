@@ -6,24 +6,30 @@ const router = express.Router();
 
 //validation
 function validateFestivalBody(body) {
-    const errors = [];
+    try {
+        const errors = [];
 
-    // name
-    if (!body.name || (typeof body.name === 'string' && body.name.trim() === '')) {
-        errors.push({field: 'name', message: 'Name is required'});
+        // name
+        if (!body.name || (typeof body.name === 'string' && body.name.trim() === '')) {
+            errors.push('Name is required');
+        }
+
+        // description
+        if (!body.description || (typeof body.description === 'string' && body.description.trim() === '')) {
+            errors.push('Description is required');
+        }
+
+        // review
+        if (!body.review || body.description.trim() === '') {
+            errors.push('Review is required');
+        } else if (isNaN(body.review)) {
+            errors.push('Review must be a number');
+        }
+
+        return errors.length ? errors.join(', ') : null;
+    } catch (error) {
+        return 'Validation error occurred';
     }
-
-    // description
-    if (!body.description || (typeof body.description === 'string' && body.description.trim() === '')) {
-        errors.push({field: 'description', message: 'Description is required'});
-    }
-
-    // review
-    if (body.review == null || isNaN(body.review)) {
-        errors.push({field: 'review', message: 'Review must be a number'});
-    }
-
-    return errors.length ? errors : null;
 }
 
 //OPTIONS handlers
@@ -42,8 +48,8 @@ router.options('/:id', (req, res) => {
 });
 
 //seed db
-router.post('/seed', async (req, res) => {
-    const seedAmount = parseInt(req.body.amount) ?? 10
+const seed = async (req, res) => {
+    const seedAmount = isNaN(req.body.amount) ? 10 : parseInt(req.body.amount);
     await Festival.deleteMany({})
     for (let i = 0; i < seedAmount; i++) {
         await Festival.create({
@@ -69,12 +75,20 @@ router.post('/seed', async (req, res) => {
         })
     }
     res.status(201).send()
-})
+}
 
 //get all festivals
 router.get('/', async (req, res) => {
     try {
-        const festivals = await Festival.find().select('name description imageUrl date locationType');
+        const totalItems = await Festival.countDocuments();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || totalItems;
+        const startIndex = (page - 1) * limit;
+        const totalPages = Math.ceil(totalItems / limit);
+        const previousPage = page > 1 ? page - 1 : null;
+        const nextPage = page < totalPages ? page + 1 : null;
+
+        const festivals = await Festival.find().skip(startIndex).limit(limit).select('name description imageUrl date locationType');
         res.json({
             items: festivals,
             _links: {
@@ -85,6 +99,34 @@ router.get('/', async (req, res) => {
                     href: `${req.protocol}://${req.get('host')}/${process.env.COLLECTION_NAME}`
                 },
             },
+            pagination: {
+                currentPage: page,
+                currentItems: festivals.length,
+                totalPages: totalPages,
+                totalItems: totalItems,
+                _links: {
+                    first: {
+                        page: 1,
+                        href: totalPages === 1
+                            ? `${req.protocol}://${req.get('host')}${req.originalUrl}`
+                            : `${req.protocol}://${req.get('host')}${req.baseUrl}?page=1&limit=${limit}`
+                    },
+                    last: {
+                        page: totalPages,
+                        href: totalPages === 1
+                            ? `${req.protocol}://${req.get('host')}${req.originalUrl}`
+                            : `${req.protocol}://${req.get('host')}${req.baseUrl}?page=${totalPages}&limit=${limit}`
+                    },
+                    previous: previousPage ? {
+                        page: previousPage,
+                        href: `${req.protocol}://${req.get('host')}${req.baseUrl}?page=${previousPage}&limit=${limit}`
+                    } : null,
+                    next: nextPage ? {
+                        page: nextPage,
+                        href: `${req.protocol}://${req.get('host')}${req.baseUrl}?page=${nextPage}&limit=${limit}`
+                    } : null,
+                }
+            }
         });
     } catch (err) {
         console.error('Failed to fetch festivals:', err);
@@ -105,12 +147,27 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-//create new festival
+//post router for custom methods
+const postRouter = async (req, res) => {
+    switch (req.body.method) {
+        case 'SEED':
+            return await seed(req, res);
+        default:
+            res.status(400).json({error: 'Invalid method'});
+    }
+}
+
+//create new festival or custom method
 router.post('/', async (req, res) => {
     try {
+        // check if method is in body
+        if (req.body.method) {
+            return postRouter(req, res)
+        }
+
         const errors = validateFestivalBody(req.body);
         if (errors) {
-            return res.status(400).json({errors});
+            return res.status(400).json({error: errors});
         }
 
         const festival = await Festival.create({
@@ -138,7 +195,7 @@ router.put('/:id', async (req, res) => {
     try {
         const errors = validateFestivalBody(req.body);
         if (errors) {
-            return res.status(400).json({errors});
+            return res.status(400).json({error: errors});
         }
 
         const festival = await Festival.findByIdAndUpdate(
