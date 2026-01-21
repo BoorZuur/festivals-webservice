@@ -15,6 +15,7 @@ const festivalSchema = new mongoose.Schema({
         lineup: {type: [String]},
     },
     {
+        timestamps: true,
         toJSON: {
             virtuals: true,
             versionKey: false,

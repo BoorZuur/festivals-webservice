@@ -80,7 +80,17 @@ const seed = async (req, res) => {
 //get all festivals
 router.get('/', async (req, res) => {
     try {
-        const totalItems = await Festival.countDocuments();
+        //filtering logic
+        const filters = req.query || {};
+        const validFields = ['hasBookmark', 'organizer', 'countryCode'];
+        Object.keys(filters).forEach(key => {
+            if (!validFields.includes(key)) {
+                delete filters[key];
+            }
+        });
+
+        //pagination logic
+        const totalItems = await Festival.countDocuments(filters);
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || totalItems;
         const startIndex = (page - 1) * limit;
@@ -88,7 +98,7 @@ router.get('/', async (req, res) => {
         const previousPage = page > 1 ? page - 1 : null;
         const nextPage = page < totalPages ? page + 1 : null;
 
-        const festivals = await Festival.find().skip(startIndex).limit(limit).select('name description imageUrl date locationType');
+        const festivals = await Festival.find(filters).skip(startIndex).limit(limit).select('name description imageUrl date locationType');
         res.json({
             items: festivals,
             _links: {
@@ -138,6 +148,14 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const festival = await Festival.findById(req.params.id);
+        const ifModifiedSince = req.header('If-Modified-Since');
+        const lastModified = festival ? festival.updatedAt || festival.createdAt : null;
+        if (lastModified) {
+            res.setHeader('Last-Modified', lastModified.toUTCString());
+        }
+        if (ifModifiedSince && lastModified && new Date(ifModifiedSince) >= lastModified) {
+            return res.status(304).send();
+        }
         if (!festival) {
             return res.status(404).json({message: 'Not found'});
         }
