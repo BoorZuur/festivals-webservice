@@ -245,6 +245,29 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// partial update festival
+router.patch('/:id', async (req, res) => {
+    try {
+        if (req.body.name === '' || req.body.description === '' || req.body.review === '') {
+            return res.status(400).json({error: 'Name, description and review cannot be empty'});
+        }
+
+        const festival = await Festival.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            {new: true}
+        );
+
+        if (!festival) {
+            return res.status(404).json({message: 'Not found'});
+        }
+
+        res.json(festival);
+    } catch (e) {
+        res.status(500).json(e);
+    }
+});
+
 //delete festival
 router.delete('/:id', async (req, res) => {
     try {
