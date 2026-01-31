@@ -1,6 +1,7 @@
 import express from 'express';
 import Festival from '../models/Festival.js';
 import {faker} from '@faker-js/faker';
+import {verifyToken} from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -169,7 +170,11 @@ router.get('/:id', async (req, res) => {
 const postRouter = async (req, res) => {
     switch (req.body.method) {
         case 'SEED':
-            return await seed(req, res);
+            // Apply JWT verification for SEED method
+            verifyToken(req, res, async () => {
+                await seed(req, res);
+            });
+            break;
         default:
             res.status(400).json({error: 'Invalid method'});
     }

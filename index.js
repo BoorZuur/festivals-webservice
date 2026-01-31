@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import express from "express";
 import festivalsRouter from "./routes/festivals.js";
+import authRouter from "./routes/auth.js";
+import profileRouter from "./routes/profile.js";
 import requireAcceptJson from "./middleware/requireAcceptJson.js";
 import cors from "./middleware/cors.js";
 
@@ -26,6 +28,8 @@ try {
     app.get('/', (req, res) => {
         res.json({message: 'Welkom bij de Festivals Webservice, gebruik /festivals om festivals te bekijken!'});
     })
+    app.use('/', profileRouter);
+    app.use('/', authRouter);
     app.use('/festivals', festivalsRouter);
 
     app.listen(process.env.EXPRESS_PORT, () => {
