@@ -8,6 +8,13 @@ const envPassword = process.env.APP_PASSWORD;
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpires = '1h';
 
+router.options('/login', (req, res) => {
+    res.header('Allow', 'POST,OPTIONS')
+    res.header('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Accept,Content-Type')
+    res.status(204).send();
+})
+
 router.post('/login', (req, res) => {
     // Get Authorization header
     const authHeader = req.headers.authorization;

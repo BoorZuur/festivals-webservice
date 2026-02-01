@@ -42,8 +42,8 @@ router.options('/', (req, res) => {
 });
 
 router.options('/:id', (req, res) => {
-    res.header('Allow', 'GET,PUT,DELETE,OPTIONS')
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS')
+    res.header('Allow', 'GET,PUT,PATCH,DELETE,OPTIONS')
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,PATCH,DELETE,OPTIONS')
     res.header('Access-Control-Allow-Headers', 'Content-Type,Accept')
     res.status(204).send();
 });
@@ -99,7 +99,7 @@ router.get('/', async (req, res) => {
         const previousPage = page > 1 ? page - 1 : null;
         const nextPage = page < totalPages ? page + 1 : null;
 
-        const festivals = await Festival.find(filters).skip(startIndex).limit(limit).select('name description imageUrl date locationType');
+        const festivals = await Festival.find(filters).skip(startIndex).limit(limit).select('name description imageUrl date locationType hasBookmark');
         res.json({
             items: festivals,
             _links: {
